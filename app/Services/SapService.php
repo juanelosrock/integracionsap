@@ -114,7 +114,7 @@ class SapService
             $netPrice      = $itemSap ? (int) round((float) $itemSap->ultimocoste) : 0;
 
             $items[] = [
-                'AccountAssignmentCategory'  => 'K',
+                'AccountAssignmentCategory'  => '',
                 'DocumentCurrency'           => $this->currency,
                 'PurchaseOrderQuantityUnit'  => trim($item->unidadmedida),
                 'Material'                   => $material,
@@ -124,9 +124,10 @@ class SapService
                 'OrderQuantity'              => (float) $item->cantidad,
                 'NetPriceAmount'             => $netPrice,
                 'PurchaseOrderItemCategory'  => '',
-                'IsReturnsItem'              => false,
-                'RequirementTracking'        => '',
-                'RequisitionerName'          => '',
+                'IsReturnsItem'                  => false,
+                'UnlimitedOverdeliveryIsAllowed' => true,
+                'RequirementTracking'            => '',
+                'RequisitionerName'              => '',
                 '_PurOrdAccountAssignment'   => [
                     [
                         'PurchaseOrderItem'       => (string)($posicion * 10),
