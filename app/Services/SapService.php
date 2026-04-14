@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Documento;
+use App\Models\Serie;
 use Illuminate\Support\Facades\Log;
 
 class SapService
@@ -86,12 +87,15 @@ class SapService
 
     private function construirPayload(Documento $documento): array
     {
+        // Buscar StorageLocation en series usando los 3 primeros caracteres del codigo_tienda
+        $prefijo = strtoupper(substr($documento->codigo_tienda, 0, 3));
+        $serie   = Serie::where('serie', $prefijo)->first();
+        $storageLocation = $serie ? trim($serie->storageloc_sap) : '';
+
         $items = [];
         $posicion = 1;
 
         foreach ($documento->items as $item) {
-            $numLinea = str_pad($posicion * 10, 0); // 10, 20, 30...
-
             $items[] = [
                 'AccountAssignmentCategory'  => 'K',
                 'DocumentCurrency'           => $this->currency,
@@ -99,7 +103,7 @@ class SapService
                 'Material'                   => trim($item->codarticulo),
                 'CompanyCode'                => $this->companyCode,
                 'Plant'                      => $documento->codigo_tienda,
-                'StorageLocation'            => '',
+                'StorageLocation'            => $storageLocation,
                 'OrderQuantity'              => (float) $item->cantidad,
                 'NetPriceAmount'             => 0,
                 'PurchaseOrderItemCategory'  => '',
