@@ -35,12 +35,8 @@ class SapTestController extends Controller
     {
         $documento->load(['proveedor', 'items']);
 
-        $sap = app(SapService::class);
-
-        // Usamos reflexión para acceder al método privado construirPayload
-        $ref    = new \ReflectionMethod($sap, 'construirPayload');
-        $ref->setAccessible(true);
-        $payload = $ref->invoke($sap, $documento);
+        $sap     = app(SapService::class);
+        $payload = $sap->construirPayload($documento);
 
         return response()->json([
             'documento' => [

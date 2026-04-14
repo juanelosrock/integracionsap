@@ -85,7 +85,7 @@ class SapService
         ];
     }
 
-    private function construirPayload(Documento $documento): array
+    public function construirPayload(Documento $documento): array
     {
         // Buscar StorageLocation en series usando los 3 primeros caracteres del codigo_tienda
         $prefijo = strtoupper(substr($documento->codigo_tienda, 0, 3));
