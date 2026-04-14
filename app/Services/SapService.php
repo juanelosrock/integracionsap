@@ -93,6 +93,7 @@ class SapService
         $serie           = Serie::where('serie', $prefijo)->first();
         $storageLocation = $serie ? trim($serie->storageloc_sap) : '';
         $plant           = $serie ? trim($serie->centro_sap) : '';
+        $costCenter      = $serie ? trim($serie->ceco_sap) : '';
 
         // Traer ref_sap de items SAP cruzando por item_id (PK de la tabla items remota)
         $ids      = $documento->items->pluck('item_id')->filter()->unique();
@@ -127,7 +128,7 @@ class SapService
                     [
                         'PurchaseOrderItem'       => (string)($posicion * 10),
                         'AccountAssignmentNumber' => (string)$posicion,
-                        'CostCenter'              => $this->costCenter,
+                        'CostCenter'              => $costCenter,
                     ],
                 ],
             ];
