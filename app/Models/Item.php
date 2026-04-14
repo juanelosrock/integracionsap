@@ -19,5 +19,13 @@ class Item extends Model
         'refproveedor',
         'sector_sap',
         'ref_sap',
+        'ultimocoste',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'ultimocoste' => 'decimal:2',
+        ];
+    }
 }

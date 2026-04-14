@@ -56,6 +56,7 @@
                                 <th class="px-4 py-3">Ref. Proveedor</th>
                                 <th class="px-4 py-3">Sector SAP</th>
                                 <th class="px-4 py-3">Ref. SAP</th>
+                                <th class="px-4 py-3 text-right">Último Costo</th>
                                 <th class="px-4 py-3">Acciones</th>
                             </tr>
                         </thead>
@@ -72,6 +73,9 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 font-mono text-xs">{{ trim($item->ref_sap) }}</td>
+                                    <td class="px-4 py-3 text-right font-mono text-xs">
+                                        {{ $item->ultimocoste !== null ? number_format($item->ultimocoste, 2) : '—' }}
+                                    </td>
                                     <td class="px-4 py-3">
                                         <a href="{{ route('items.show', $item->ID) }}"
                                            class="text-indigo-600 hover:underline text-xs">Ver</a>
@@ -79,7 +83,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">
                                         No se encontraron items.
                                     </td>
                                 </tr>

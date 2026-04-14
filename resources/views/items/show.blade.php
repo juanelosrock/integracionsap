@@ -48,6 +48,12 @@
                         <dt class="font-medium text-gray-500">Referencia SAP</dt>
                         <dd class="text-gray-900 dark:text-gray-100 font-mono">{{ trim($item->ref_sap) }}</dd>
                     </div>
+                    <div>
+                        <dt class="font-medium text-gray-500">Último Costo</dt>
+                        <dd class="text-gray-900 dark:text-gray-100 font-mono">
+                            {{ $item->ultimocoste !== null ? number_format($item->ultimocoste, 2) : '—' }}
+                        </dd>
+                    </div>
                 </dl>
 
             </div>
