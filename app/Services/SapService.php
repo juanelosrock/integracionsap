@@ -105,10 +105,11 @@ class SapService
         $posicion = 1;
 
         foreach ($documento->items as $item) {
-            $itemSap  = $itemsSap->get($item->item_id);
-            $material = ($itemSap && !empty(trim($itemSap->ref_sap)))
-                        ? trim($itemSap->ref_sap)
-                        : trim($item->codarticulo);
+            $itemSap       = $itemsSap->get($item->item_id);
+            $material      = ($itemSap && !empty(trim($itemSap->ref_sap)))
+                             ? trim($itemSap->ref_sap)
+                             : trim($item->codarticulo);
+            $netPrice      = $itemSap ? (int) round((float) $itemSap->ultimocoste) : 0;
 
             $items[] = [
                 'AccountAssignmentCategory'  => 'K',
@@ -119,7 +120,7 @@ class SapService
                 'Plant'                      => $plant,
                 'StorageLocation'            => $storageLocation,
                 'OrderQuantity'              => (float) $item->cantidad,
-                'NetPriceAmount'             => 0,
+                'NetPriceAmount'             => $netPrice,
                 'PurchaseOrderItemCategory'  => '',
                 'IsReturnsItem'              => false,
                 'RequirementTracking'        => '',
