@@ -95,9 +95,9 @@ class SapService
         $plant           = $serie ? trim($serie->centro_sap) : '';
         $costCenter      = $serie ? trim($serie->ceco_sap) : '';
 
-        // Traer ref_sap y ultimocoste cruzando por codarticulo (trim exacto)
+        // Traer ref_sap y ultimocoste — TRIM en SQL para ignorar espacios en BD remota
         $codigos  = $documento->items->map(fn($i) => trim($i->codarticulo))->filter()->unique()->values();
-        $itemsSap = Item::whereIn('codarticulo', $codigos)
+        $itemsSap = Item::whereIn(\Illuminate\Support\Facades\DB::raw('TRIM(codarticulo)'), $codigos)
                         ->get()
                         ->keyBy(fn($i) => trim($i->codarticulo));
 
