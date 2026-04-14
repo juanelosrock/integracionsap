@@ -73,19 +73,27 @@ class WebformController extends Controller
             ]);
         }
 
-        // Enviar a SAP
-        $sapExito = false;
+        // Enviar a SAP y guardar respuesta
+        $sapExito   = false;
         $sapMensaje = null;
         try {
-            $sap = app(SapService::class);
+            $sap       = app(SapService::class);
             $resultado = $sap->enviarOrdenCompra($documento);
-            $sapExito = $resultado['success'];
+            $sapExito  = $resultado['success'];
 
-            if ($sapExito) {
-                $documento->update(['estado' => 'enviado']);
-            }
+            $documento->update([
+                'estado'         => $sapExito ? 'enviado' : 'borrador',
+                'sap_http_code'  => $resultado['http_code'],
+                'sap_respuesta'  => $resultado['response'],
+                'sap_enviado_at' => $resultado['enviado_at'],
+            ]);
         } catch (\Exception $e) {
             $sapMensaje = $e->getMessage();
+            $documento->update([
+                'sap_http_code'  => 0,
+                'sap_respuesta'  => ['error' => $e->getMessage()],
+                'sap_enviado_at' => now(),
+            ]);
         }
 
         return view('webform.confirmacion', compact('documento', 'sapExito', 'sapMensaje'));

@@ -139,6 +139,33 @@
                 </div>
             </div>
 
+            {{-- RESPUESTA SAP --}}
+            @if($documento->sap_enviado_at)
+            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Respuesta SAP</h3>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-500">
+                            {{ $documento->sap_enviado_at->format('d/m/Y H:i:s') }}
+                        </span>
+                        @php
+                            $code = $documento->sap_http_code;
+                            $badgeClass = match(true) {
+                                $code >= 200 && $code < 300 => 'bg-green-100 text-green-800',
+                                $code >= 400 && $code < 500 => 'bg-red-100 text-red-800',
+                                $code >= 500               => 'bg-orange-100 text-orange-800',
+                                default                    => 'bg-gray-100 text-gray-700',
+                            };
+                        @endphp
+                        <span class="px-3 py-1 text-xs font-bold rounded-full {{ $badgeClass }}">
+                            HTTP {{ $documento->sap_http_code ?? '—' }}
+                        </span>
+                    </div>
+                </div>
+                <pre class="bg-gray-900 text-green-300 text-xs font-mono p-4 rounded overflow-x-auto whitespace-pre-wrap break-all">{{ json_encode($documento->sap_respuesta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+            </div>
+            @endif
+
         </div>
     </div>
 </x-app-layout>

@@ -83,6 +83,7 @@ class SapService
             'http_code' => $httpCode,
             'success'   => $httpCode >= 200 && $httpCode < 300,
             'response'  => $decoded,
+            'enviado_at' => now(),
         ];
     }
 

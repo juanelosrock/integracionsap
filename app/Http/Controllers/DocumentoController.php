@@ -89,18 +89,28 @@ class DocumentoController extends Controller
             ]);
         }
 
-        // Enviar a SAP
+        // Enviar a SAP y guardar respuesta
         try {
-            $sap = app(SapService::class);
+            $sap       = app(SapService::class);
             $resultado = $sap->enviarOrdenCompra($documento);
+
+            $documento->update([
+                'estado'         => $resultado['success'] ? 'enviado' : 'borrador',
+                'sap_http_code'  => $resultado['http_code'],
+                'sap_respuesta'  => $resultado['response'],
+                'sap_enviado_at' => $resultado['enviado_at'],
+            ]);
 
             $mensaje = $resultado['success']
                 ? "Documento {$documento->numero} creado y enviado a SAP correctamente."
                 : "Documento {$documento->numero} creado, pero SAP respondió con código {$resultado['http_code']}.";
 
-            $documento->update(['estado' => $resultado['success'] ? 'enviado' : 'borrador']);
-
         } catch (\Exception $e) {
+            $documento->update([
+                'sap_http_code' => 0,
+                'sap_respuesta' => ['error' => $e->getMessage()],
+                'sap_enviado_at' => now(),
+            ]);
             $mensaje = "Documento {$documento->numero} creado, pero no se pudo enviar a SAP: {$e->getMessage()}";
         }
 

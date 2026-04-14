@@ -19,11 +19,18 @@ class Documento extends Model
         'estado',
         'observaciones',
         'created_by',
+        'sap_http_code',
+        'sap_respuesta',
+        'sap_enviado_at',
     ];
 
     protected function casts(): array
     {
-        return ['fecha' => 'date'];
+        return [
+            'fecha'          => 'date',
+            'sap_respuesta'  => 'array',
+            'sap_enviado_at' => 'datetime',
+        ];
     }
 
     protected static function booted(): void
