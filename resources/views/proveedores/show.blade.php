@@ -34,6 +34,10 @@
                         <dd class="font-mono text-gray-900 dark:text-gray-100">{{ $proveedor->nit ?? '—' }}</dd>
                     </div>
                     <div>
+                        <dt class="font-medium text-gray-500">Términos de Pago</dt>
+                        <dd class="font-mono text-gray-900 dark:text-gray-100">{{ $proveedor->terminos_pago ?? '—' }}</dd>
+                    </div>
+                    <div>
                         <dt class="font-medium text-gray-500">Email</dt>
                         <dd class="text-gray-900 dark:text-gray-100">{{ $proveedor->email ?? '—' }}</dd>
                     </div>

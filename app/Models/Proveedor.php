@@ -12,6 +12,7 @@ class Proveedor extends Model
 
     protected $fillable = [
         'codigo_sap',
+        'terminos_pago',
         'nombre',
         'nit',
         'email',

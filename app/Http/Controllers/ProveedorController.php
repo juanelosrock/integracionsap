@@ -38,6 +38,7 @@ class ProveedorController extends Controller
     {
         $data = $request->validate([
             'codigo_sap'        => ['required', 'string', 'max:50', 'unique:proveedores,codigo_sap'],
+            'terminos_pago'     => ['nullable', 'string', 'max:20'],
             'nombre'            => ['required', 'string', 'max:150'],
             'nit'               => ['nullable', 'string', 'max:30'],
             'email'             => ['nullable', 'email', 'max:150'],
@@ -84,6 +85,7 @@ class ProveedorController extends Controller
     {
         $data = $request->validate([
             'codigo_sap'        => ['required', 'string', 'max:50', 'unique:proveedores,codigo_sap,' . $proveedor->id],
+            'terminos_pago'     => ['nullable', 'string', 'max:20'],
             'nombre'            => ['required', 'string', 'max:150'],
             'nit'               => ['nullable', 'string', 'max:30'],
             'email'             => ['nullable', 'email', 'max:150'],

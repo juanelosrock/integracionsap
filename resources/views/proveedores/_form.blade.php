@@ -10,6 +10,12 @@
                     :value="old('codigo_sap', $proveedor->codigo_sap ?? '')" required placeholder="Ej: PROV-001" />
                 <x-input-error :messages="$errors->get('codigo_sap')" class="mt-2" />
             </div>
+            <div>
+                <x-input-label for="terminos_pago" value="Términos de Pago" />
+                <x-text-input id="terminos_pago" name="terminos_pago" type="text" class="mt-1 block w-full"
+                    :value="old('terminos_pago', $proveedor->terminos_pago ?? '')" placeholder="Ej: NT30" />
+                <x-input-error :messages="$errors->get('terminos_pago')" class="mt-2" />
+            </div>
             <div class="sm:col-span-2">
                 <x-input-label for="nombre" value="Nombre / Razón Social *" />
                 <x-text-input id="nombre" name="nombre" type="text" class="mt-1 block w-full"
