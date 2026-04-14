@@ -37,6 +37,10 @@
                     <x-nav-link :href="route('series.index')" :active="request()->routeIs('series.*')">
                         Series SAP
                     </x-nav-link>
+                    <x-nav-link :href="route('sap.test')" :active="request()->routeIs('sap.*')"
+                        style="color: #f59e0b; font-weight:700;">
+                        ⚡ SAP Tester
+                    </x-nav-link>
                 </div>
             </div>
 

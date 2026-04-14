@@ -6,6 +6,7 @@ use App\Models\Documento;
 use App\Models\DocumentoItem;
 use App\Models\Item;
 use App\Models\Proveedor;
+use App\Services\SapService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -72,7 +73,22 @@ class WebformController extends Controller
             ]);
         }
 
-        return view('webform.confirmacion', compact('documento'));
+        // Enviar a SAP
+        $sapExito = false;
+        $sapMensaje = null;
+        try {
+            $sap = app(SapService::class);
+            $resultado = $sap->enviarOrdenCompra($documento);
+            $sapExito = $resultado['success'];
+
+            if ($sapExito) {
+                $documento->update(['estado' => 'enviado']);
+            }
+        } catch (\Exception $e) {
+            $sapMensaje = $e->getMessage();
+        }
+
+        return view('webform.confirmacion', compact('documento', 'sapExito', 'sapMensaje'));
     }
 
     public function itemsProveedor(Proveedor $proveedor): JsonResponse

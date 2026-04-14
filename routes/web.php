@@ -5,6 +5,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SapTestController;
 use App\Http\Controllers\SerieController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebformController;
@@ -107,6 +108,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('documentos/{documento}', [DocumentoController::class, 'destroy'])
         ->middleware('permission:documentos.delete')
         ->name('documentos.destroy');
+
+    // SAP API Tester
+    Route::get('/sap/test', [SapTestController::class, 'index'])->name('sap.test');
+    Route::get('/sap/test/payload/{documento}', [SapTestController::class, 'payload'])->name('sap.test.payload');
+    Route::post('/sap/test/enviar', [SapTestController::class, 'enviar'])->name('sap.test.enviar');
 
     // Items SAP (BD remota, solo lectura)
     Route::middleware('permission:itemssap.view')->group(function () {

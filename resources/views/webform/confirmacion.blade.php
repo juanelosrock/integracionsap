@@ -45,7 +45,25 @@
             <tr>
                 <td class="xl-cell row-num">1</td>
                 <td class="xl-cell success-row" colspan="2">
-                    ✔ &nbsp; PEDIDO ENVIADO CORRECTAMENTE
+                    ✔ &nbsp; PEDIDO REGISTRADO CORRECTAMENTE
+                </td>
+            </tr>
+            <tr>
+                <td class="xl-cell row-num">2</td>
+                <td class="xl-cell" colspan="2"
+                    style="background:{{ $sapExito ? '#e2efda' : '#fff2cc' }};
+                           color:{{ $sapExito ? '#217346' : '#7d6608' }};
+                           font-weight:600; font-size:12px; padding:4px 8px;">
+                    @if($sapExito)
+                        ✔ &nbsp; Orden de compra enviada a SAP exitosamente
+                    @else
+                        ⚠ &nbsp; Pedido guardado — pendiente de envío a SAP
+                        @if($sapMensaje)
+                            <span style="font-weight:400; font-size:11px; display:block; margin-top:2px;">
+                                {{ $sapMensaje }}
+                            </span>
+                        @endif
+                    @endif
                 </td>
             </tr>
             <tr><td class="xl-cell row-num">2</td><td class="xl-cell" colspan="2"></td></tr>

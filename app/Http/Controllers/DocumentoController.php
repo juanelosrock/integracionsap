@@ -6,6 +6,7 @@ use App\Models\Documento;
 use App\Models\DocumentoItem;
 use App\Models\Item;
 use App\Models\Proveedor;
+use App\Services\SapService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -88,8 +89,22 @@ class DocumentoController extends Controller
             ]);
         }
 
-        return redirect()->route('documentos.show', $documento)
-            ->with('success', "Documento {$documento->numero} creado correctamente.");
+        // Enviar a SAP
+        try {
+            $sap = app(SapService::class);
+            $resultado = $sap->enviarOrdenCompra($documento);
+
+            $mensaje = $resultado['success']
+                ? "Documento {$documento->numero} creado y enviado a SAP correctamente."
+                : "Documento {$documento->numero} creado, pero SAP respondió con código {$resultado['http_code']}.";
+
+            $documento->update(['estado' => $resultado['success'] ? 'enviado' : 'borrador']);
+
+        } catch (\Exception $e) {
+            $mensaje = "Documento {$documento->numero} creado, pero no se pudo enviar a SAP: {$e->getMessage()}";
+        }
+
+        return redirect()->route('documentos.show', $documento)->with('success', $mensaje);
     }
 
     public function show(Documento $documento): View
