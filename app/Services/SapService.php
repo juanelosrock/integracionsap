@@ -146,7 +146,7 @@ class SapService
             'PurchasingGroup'         => $this->purchasingGroup,
             'Supplier'                => $documento->proveedor->codigo_sap,
             'DocumentCurrency'        => $this->currency,
-            'PaymentTerms'            => $this->paymentTerms,
+            'PaymentTerms'            => $documento->proveedor->terminos_pago ?? $this->paymentTerms,
             '_PurchaseOrderItem'      => $items,
         ];
     }
