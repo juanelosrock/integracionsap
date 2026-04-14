@@ -88,9 +88,10 @@ class SapService
     public function construirPayload(Documento $documento): array
     {
         // Buscar StorageLocation en series usando los 3 primeros caracteres del codigo_tienda
-        $prefijo = strtoupper(substr($documento->codigo_tienda, 0, 3));
-        $serie   = Serie::where('serie', $prefijo)->first();
+        $prefijo         = strtoupper(substr($documento->codigo_tienda, 0, 3));
+        $serie           = Serie::where('serie', $prefijo)->first();
         $storageLocation = $serie ? trim($serie->storageloc_sap) : '';
+        $plant           = $serie ? trim($serie->centro_sap) : $documento->codigo_tienda;
 
         $items = [];
         $posicion = 1;
@@ -102,7 +103,7 @@ class SapService
                 'PurchaseOrderQuantityUnit'  => trim($item->unidadmedida),
                 'Material'                   => trim($item->codarticulo),
                 'CompanyCode'                => $this->companyCode,
-                'Plant'                      => $documento->codigo_tienda,
+                'Plant'                      => $plant,
                 'StorageLocation'            => $storageLocation,
                 'OrderQuantity'              => (float) $item->cantidad,
                 'NetPriceAmount'             => 0,
