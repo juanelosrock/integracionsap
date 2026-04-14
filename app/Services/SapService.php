@@ -95,20 +95,21 @@ class SapService
         $plant           = $serie ? trim($serie->centro_sap) : '';
         $costCenter      = $serie ? trim($serie->ceco_sap) : '';
 
-        // Traer ref_sap de items SAP cruzando por item_id (PK de la tabla items remota)
-        $ids      = $documento->items->pluck('item_id')->filter()->unique();
-        $itemsSap = Item::whereIn('ID', $ids)
+        // Traer ref_sap y ultimocoste cruzando por codarticulo (trim exacto)
+        $codigos  = $documento->items->map(fn($i) => trim($i->codarticulo))->filter()->unique()->values();
+        $itemsSap = Item::whereIn('codarticulo', $codigos)
                         ->get()
-                        ->keyBy('ID');
+                        ->keyBy(fn($i) => trim($i->codarticulo));
 
         $items = [];
         $posicion = 1;
 
         foreach ($documento->items as $item) {
-            $itemSap       = $itemsSap->get($item->item_id);
+            $cod           = trim($item->codarticulo);
+            $itemSap       = $itemsSap->get($cod);
             $material      = ($itemSap && !empty(trim($itemSap->ref_sap)))
                              ? trim($itemSap->ref_sap)
-                             : trim($item->codarticulo);
+                             : $cod;
             $netPrice      = $itemSap ? (int) round((float) $itemSap->ultimocoste) : 0;
 
             $items[] = [
