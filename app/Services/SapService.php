@@ -94,18 +94,20 @@ class SapService
         $storageLocation = $serie ? trim($serie->storageloc_sap) : '';
         $plant           = $serie ? trim($serie->centro_sap) : '';
 
-        // Traer ref_sap de items SAP cruzando por codarticulo (una sola consulta)
-        $codigos  = $documento->items->pluck('codarticulo')->map(fn($c) => trim($c))->unique();
-        $itemsSap = Item::whereIn('codarticulo', $codigos)
+        // Traer ref_sap de items SAP cruzando por item_id (PK de la tabla items remota)
+        $ids      = $documento->items->pluck('item_id')->filter()->unique();
+        $itemsSap = Item::whereIn('ID', $ids)
                         ->get()
-                        ->keyBy(fn($i) => trim($i->codarticulo));
+                        ->keyBy('ID');
 
         $items = [];
         $posicion = 1;
 
         foreach ($documento->items as $item) {
-            $itemSap  = $itemsSap->get(trim($item->codarticulo));
-            $material = $itemSap ? trim($itemSap->ref_sap) : trim($item->codarticulo);
+            $itemSap  = $itemsSap->get($item->item_id);
+            $material = ($itemSap && !empty(trim($itemSap->ref_sap)))
+                        ? trim($itemSap->ref_sap)
+                        : trim($item->codarticulo);
 
             $items[] = [
                 'AccountAssignmentCategory'  => 'K',
