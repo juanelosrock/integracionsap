@@ -91,7 +91,7 @@ class SapService
         $prefijo         = strtoupper(substr($documento->codigo_tienda, 0, 3));
         $serie           = Serie::where('serie', $prefijo)->first();
         $storageLocation = $serie ? trim($serie->storageloc_sap) : '';
-        $plant           = $serie ? trim($serie->centro_sap) : $documento->codigo_tienda;
+        $plant           = $serie ? trim($serie->centro_sap) : '';
 
         $items = [];
         $posicion = 1;
