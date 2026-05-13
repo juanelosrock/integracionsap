@@ -272,13 +272,34 @@ class GmailController extends Controller
         return ['zip_filename' => null, 'archivos' => [], 'factura' => null];
     }
 
+    private function limpiarXml(string $xml): string
+    {
+        // Eliminar BOM si existe
+        $xml = ltrim($xml, "\xEF\xBB\xBF");
+
+        // Reemplazar declaración XML con encoding potencialmente problemático
+        // por una sin atributo encoding para que PHP lo maneje como UTF-8
+        $xml = preg_replace(
+            '/<\?xml[^?]*\?>/i',
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            $xml,
+            1
+        );
+
+        return $xml;
+    }
+
     private function parsearFacturaXml(string $xmlRaw): array
     {
         libxml_use_internal_errors(true);
 
-        $outer = simplexml_load_string($xmlRaw);
+        $xmlRaw = $this->limpiarXml($xmlRaw);
+
+        $outer = simplexml_load_string($xmlRaw, 'SimpleXMLElement', LIBXML_NOERROR | LIBXML_NOWARNING);
         if (! $outer) {
-            return ['error' => 'XML inválido'];
+            $errores = array_map(fn($e) => $e->message, libxml_get_errors());
+            libxml_clear_errors();
+            return ['error' => 'XML inválido: ' . implode('; ', $errores)];
         }
 
         // El Invoice real puede estar embebido como CDATA en cac:Attachment/cac:ExternalReference/cbc:Description
@@ -292,19 +313,23 @@ class GmailController extends Controller
             if ($extRef) {
                 $desc = (string) $extRef->children($nsc)->Description;
                 if ($desc && str_contains($desc, '<Invoice')) {
-                    $invoiceXml = $desc;
+                    $invoiceXml = $this->limpiarXml($desc);
                 }
             }
         }
 
         // Si no hay CDATA embebido, el XML ya es directamente un Invoice
         $doc = $invoiceXml
-            ? simplexml_load_string($invoiceXml)
+            ? simplexml_load_string($invoiceXml, 'SimpleXMLElement', LIBXML_NOERROR | LIBXML_NOWARNING)
             : $outer;
 
         if (! $doc) {
-            return ['error' => 'No se pudo parsear el Invoice'];
+            $errores = array_map(fn($e) => $e->message, libxml_get_errors());
+            libxml_clear_errors();
+            return ['error' => 'No se pudo parsear el Invoice: ' . implode('; ', $errores)];
         }
+
+        libxml_clear_errors();
 
         $nsCac = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
         $nsCbc = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
