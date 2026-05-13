@@ -195,12 +195,9 @@ class GmailController extends Controller
             })->filter()->values();
 
             // Tomar el primer correo y extraer archivos del ZIP adjunto
-            $archivosZip  = [];
-            $debugPartes  = [];
+            $archivosZip = [];
             if ($correos->isNotEmpty()) {
-                $primero     = $correos->first();
-                $debugPartes = $this->buscarPartes($primero['payload'] ?? []);
-                $archivosZip = $this->extraerArchivosDeZip($token->access_token, $primero);
+                $archivosZip = $this->extraerArchivosDeZip($token->access_token, $correos->first());
             }
 
             return response()->json([
@@ -208,12 +205,6 @@ class GmailController extends Controller
                 'total'        => $correos->count(),
                 'correos'      => $correos->map(fn($c) => array_diff_key($c, ['payload' => ''])),
                 'archivos_zip' => $archivosZip,
-                '_debug_partes' => collect($debugPartes)->map(fn($p) => [
-                    'filename' => $p['filename'] ?? '',
-                    'mimeType' => $p['mimeType'] ?? '',
-                    'size'     => $p['body']['size'] ?? 0,
-                    'hasAttachmentId' => isset($p['body']['attachmentId']),
-                ]),
             ]);
 
         } catch (\Exception $e) {
@@ -249,29 +240,111 @@ class GmailController extends Controller
 
             if (! $zipContent) continue;
 
-            // Escribir ZIP a un archivo temporal y leer su índice
             $tmpZip = tempnam(sys_get_temp_dir(), 'gmail_zip_');
             file_put_contents($tmpZip, $zipContent);
 
-            $zip   = new \ZipArchive();
-            $names = [];
+            $zip      = new \ZipArchive();
+            $names    = [];
+            $facturaXml = null;
 
             if ($zip->open($tmpZip) === true) {
                 for ($i = 0; $i < $zip->numFiles; $i++) {
-                    $names[] = $zip->getNameIndex($i);
+                    $name = $zip->getNameIndex($i);
+                    $names[] = $name;
+                    if ($facturaXml === null && str_ends_with(strtolower($name), '.xml')) {
+                        $facturaXml = $zip->getFromIndex($i);
+                    }
                 }
                 $zip->close();
             }
 
             unlink($tmpZip);
 
+            $factura = $facturaXml ? $this->parsearFacturaXml($facturaXml) : null;
+
             return [
                 'zip_filename' => $filename,
                 'archivos'     => $names,
+                'factura'      => $factura,
             ];
         }
 
-        return ['zip_filename' => null, 'archivos' => []];
+        return ['zip_filename' => null, 'archivos' => [], 'factura' => null];
+    }
+
+    private function parsearFacturaXml(string $xmlRaw): array
+    {
+        libxml_use_internal_errors(true);
+
+        $outer = simplexml_load_string($xmlRaw);
+        if (! $outer) {
+            return ['error' => 'XML inválido'];
+        }
+
+        // El Invoice real puede estar embebido como CDATA en cac:Attachment/cac:ExternalReference/cbc:Description
+        $ns  = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+        $nsc = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+
+        $invoiceXml = null;
+        $attachment = $outer->children($ns)->Attachment;
+        if ($attachment) {
+            $extRef = $attachment->children($ns)->ExternalReference;
+            if ($extRef) {
+                $desc = (string) $extRef->children($nsc)->Description;
+                if ($desc && str_contains($desc, '<Invoice')) {
+                    $invoiceXml = $desc;
+                }
+            }
+        }
+
+        // Si no hay CDATA embebido, el XML ya es directamente un Invoice
+        $doc = $invoiceXml
+            ? simplexml_load_string($invoiceXml)
+            : $outer;
+
+        if (! $doc) {
+            return ['error' => 'No se pudo parsear el Invoice'];
+        }
+
+        $nsCac = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
+        $nsCbc = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+
+        // NIT y nombre del proveedor (AccountingSupplierParty)
+        $supplier = $doc->children($nsCac)->AccountingSupplierParty;
+        $party    = $supplier?->children($nsCac)->Party;
+        $taxScheme = $party?->children($nsCac)->PartyTaxScheme;
+        $nitProveedor    = $taxScheme ? (string) $taxScheme->children($nsCbc)->CompanyID : '';
+        $nombreProveedor = $taxScheme ? (string) $taxScheme->children($nsCbc)->RegistrationName : '';
+
+        // Líneas de la factura
+        $productos = [];
+        foreach ($doc->children($nsCac)->InvoiceLine as $line) {
+            $lineId   = (string) $line->children($nsCbc)->ID;
+            $cantidad = (string) $line->children($nsCbc)->InvoicedQuantity;
+            $valor    = (string) $line->children($nsCbc)->LineExtensionAmount;
+
+            $item       = $line->children($nsCac)->Item;
+            $descripcion = $item ? trim((string) $item->children($nsCbc)->Description, '|') : '';
+            $codigo      = '';
+            if ($item) {
+                $sellerId = $item->children($nsCac)->SellersItemIdentification;
+                $codigo   = $sellerId ? (string) $sellerId->children($nsCbc)->ID : '';
+            }
+
+            $productos[] = [
+                'linea'       => $lineId,
+                'codigo'      => $codigo,
+                'descripcion' => trim($descripcion),
+                'cantidad'    => $cantidad,
+                'valor'       => $valor,
+            ];
+        }
+
+        return [
+            'nit_proveedor'    => $nitProveedor,
+            'nombre_proveedor' => $nombreProveedor,
+            'productos'        => $productos,
+        ];
     }
 
     private function buscarPartes(array $payload): array

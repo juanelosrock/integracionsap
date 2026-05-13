@@ -539,7 +539,7 @@ async function buscarGmail() {
             return;
         }
 
-        // Archivos del ZIP (primer correo)
+        // Archivos del ZIP y datos de la factura (primer correo)
         let zipHtml = '';
         const zip = data.archivos_zip;
         if (zip && zip.zip_filename) {
@@ -552,14 +552,57 @@ async function buscarGmail() {
                     <span style="font-family:monospace;color:#1e293b;">${escHtml(f)}</span>
                 </div>`;
             }).join('');
+
+            // Datos de la factura electrónica
+            let facturaHtml = '';
+            const f = zip.factura;
+            if (f && !f.error) {
+                const prods = (f.productos || []).map(p => `
+                    <tr style="border-bottom:1px solid #f0f0f0;">
+                        <td style="padding:3px 5px;font-family:monospace;color:#1e40af;white-space:nowrap;">${escHtml(p.codigo)}</td>
+                        <td style="padding:3px 5px;color:#1e293b;font-size:10px;">${escHtml(p.descripcion)}</td>
+                        <td style="padding:3px 5px;text-align:right;white-space:nowrap;">${escHtml(p.cantidad)}</td>
+                        <td style="padding:3px 5px;text-align:right;white-space:nowrap;color:#065f46;">${escHtml(Number(p.valor).toLocaleString('es-CO'))}</td>
+                    </tr>`).join('');
+
+                facturaHtml = `
+                    <div style="margin-top:8px;padding:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;">
+                        <div style="font-size:10px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                            🧾 Factura Electrónica
+                        </div>
+                        <div style="font-size:11px;margin-bottom:4px;">
+                            <span style="color:#6b7280;">NIT:</span>
+                            <strong style="color:#1e293b;">${escHtml(f.nit_proveedor)}</strong>
+                            &nbsp;·&nbsp;
+                            <span style="color:#1e293b;">${escHtml(f.nombre_proveedor)}</span>
+                        </div>
+                        ${prods ? `<div style="font-size:10px;font-weight:700;color:#374151;margin:6px 0 3px;">Productos (${f.productos.length})</div>
+                        <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                            <thead>
+                                <tr style="background:#dbeafe;">
+                                    <th style="padding:3px 5px;text-align:left;color:#1e40af;font-size:10px;">Código</th>
+                                    <th style="padding:3px 5px;text-align:left;color:#1e40af;font-size:10px;">Descripción</th>
+                                    <th style="padding:3px 5px;text-align:right;color:#1e40af;font-size:10px;">Cant.</th>
+                                    <th style="padding:3px 5px;text-align:right;color:#1e40af;font-size:10px;">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>${prods}</tbody>
+                        </table></div>` : ''}
+                    </div>`;
+            } else if (f && f.error) {
+                facturaHtml = `<div style="margin-top:6px;font-size:11px;color:#dc2626;">⚠ ${escHtml(f.error)}</div>`;
+            }
+
             zipHtml = `
                 <div style="margin:8px 12px;padding:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;">
                     <div style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
                         📦 ${escHtml(zip.zip_filename)}
                     </div>
                     ${fileList || '<span style="color:#9ca3af;font-size:11px;">ZIP vacío</span>'}
+                    ${facturaHtml}
                 </div>`;
-        } else if (zip && zip.archivos_zip === null) {
+        } else if (zip && zip.zip_filename === null) {
             zipHtml = `<div style="margin:8px 12px;font-size:11px;color:#9ca3af;">Sin adjunto ZIP en este correo.</div>`;
         }
 
