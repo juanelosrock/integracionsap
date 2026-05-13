@@ -195,9 +195,12 @@ class GmailController extends Controller
             })->filter()->values();
 
             // Tomar el primer correo y extraer archivos del ZIP adjunto
-            $archivosZip = [];
+            $archivosZip  = [];
+            $debugPartes  = [];
             if ($correos->isNotEmpty()) {
-                $archivosZip = $this->extraerArchivosDeZip($token->access_token, $correos->first());
+                $primero     = $correos->first();
+                $debugPartes = $this->buscarPartes($primero['payload'] ?? []);
+                $archivosZip = $this->extraerArchivosDeZip($token->access_token, $primero);
             }
 
             return response()->json([
@@ -205,6 +208,12 @@ class GmailController extends Controller
                 'total'        => $correos->count(),
                 'correos'      => $correos->map(fn($c) => array_diff_key($c, ['payload' => ''])),
                 'archivos_zip' => $archivosZip,
+                '_debug_partes' => collect($debugPartes)->map(fn($p) => [
+                    'filename' => $p['filename'] ?? '',
+                    'mimeType' => $p['mimeType'] ?? '',
+                    'size'     => $p['body']['size'] ?? 0,
+                    'hasAttachmentId' => isset($p['body']['attachmentId']),
+                ]),
             ]);
 
         } catch (\Exception $e) {
