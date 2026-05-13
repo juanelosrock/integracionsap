@@ -154,7 +154,7 @@ class GmailController extends Controller
             $listResponse = Http::withToken($token->access_token)
                 ->get('https://gmail.googleapis.com/gmail/v1/users/me/messages', [
                     'maxResults' => 20,
-                    'q'          => 'subject:' . $factura,
+                    'q'          => 'subject:"' . $factura . '" in:inbox -subject:Fwd: -subject:RV: -subject:Re:',
                 ]);
 
             if ($listResponse->failed()) {
