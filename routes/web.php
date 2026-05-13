@@ -8,12 +8,16 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SapTestController;
 use App\Http\Controllers\SerieController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\GmailController;
 use App\Http\Controllers\WebformController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// ── Gmail OAuth callback (Google redirige aquí, sin auth middleware) ────────
+Route::get('/gmail/callback', [GmailController::class, 'callback'])->name('gmail.callback');
 
 // ── Webform público (embebible via iframe) ──────────────────────────────────
 Route::get('/webform/pedido',  [WebformController::class, 'show'])->name('webform.show');
@@ -125,6 +129,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/series', [SerieController::class, 'index'])->name('series.index');
         Route::get('/series/{serie}', [SerieController::class, 'show'])->name('series.show');
     });
+
+    // Gmail
+    Route::get('/gmail', [GmailController::class, 'index'])->name('gmail.index');
+    Route::get('/gmail/redirect', [GmailController::class, 'redirect'])->name('gmail.redirect');
+    Route::delete('/gmail/disconnect', [GmailController::class, 'disconnect'])->name('gmail.disconnect');
 });
 
 require __DIR__.'/auth.php';
