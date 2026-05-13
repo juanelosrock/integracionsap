@@ -272,96 +272,61 @@ class GmailController extends Controller
         return ['zip_filename' => null, 'archivos' => [], 'factura' => null];
     }
 
-    private function limpiarXml(string $xml): string
-    {
-        // Eliminar BOM si existe
-        $xml = ltrim($xml, "\xEF\xBB\xBF");
-
-        // Reemplazar declaración XML con encoding potencialmente problemático
-        // por una sin atributo encoding para que PHP lo maneje como UTF-8
-        $xml = preg_replace(
-            '/<\?xml[^?]*\?>/i',
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            $xml,
-            1
-        );
-
-        return $xml;
-    }
-
     private function parsearFacturaXml(string $xmlRaw): array
     {
-        libxml_use_internal_errors(true);
+        // Eliminar BOM si existe
+        $xmlRaw = ltrim($xmlRaw, "\xEF\xBB\xBF");
 
-        $xmlRaw = $this->limpiarXml($xmlRaw);
-
-        $outer = simplexml_load_string($xmlRaw, 'SimpleXMLElement', LIBXML_NOERROR | LIBXML_NOWARNING);
-        if (! $outer) {
-            $errores = array_map(fn($e) => $e->message, libxml_get_errors());
-            libxml_clear_errors();
-            return ['error' => 'XML inválido: ' . implode('; ', $errores)];
-        }
-
-        // El Invoice real puede estar embebido como CDATA en cac:Attachment/cac:ExternalReference/cbc:Description
-        $ns  = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
-        $nsc = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
-
+        // Extraer el Invoice del CDATA con regex ANTES de parsear el outer.
+        // El AttachedDocument puede tener doble-encoding (Ã³, Ã¡) que hace
+        // fallar libxml, pero el Invoice dentro del CDATA siempre es UTF-8 válido.
         $invoiceXml = null;
-        $attachment = $outer->children($ns)->Attachment;
-        if ($attachment) {
-            $extRef = $attachment->children($ns)->ExternalReference;
-            if ($extRef) {
-                $desc = (string) $extRef->children($nsc)->Description;
-                if ($desc && str_contains($desc, '<Invoice')) {
-                    $invoiceXml = $this->limpiarXml($desc);
-                }
-            }
+        if (preg_match('/<!\[CDATA\[\s*((?:<\?xml[^?]*\?>)?\s*<Invoice[\s\S]*?<\/Invoice>)\s*\]\]>/s', $xmlRaw, $m)) {
+            $invoiceXml = trim($m[1]);
+            // Normalizar declaración XML
+            $invoiceXml = preg_replace('/<\?xml[^?]*\?>/i', '<?xml version="1.0" encoding="UTF-8"?>', $invoiceXml, 1);
         }
 
-        // Si no hay CDATA embebido, el XML ya es directamente un Invoice
-        $doc = $invoiceXml
-            ? simplexml_load_string($invoiceXml, 'SimpleXMLElement', LIBXML_NOERROR | LIBXML_NOWARNING)
-            : $outer;
+        $xmlToParse = $invoiceXml ?? preg_replace('/<\?xml[^?]*\?>/i', '<?xml version="1.0" encoding="UTF-8"?>', $xmlRaw, 1);
 
-        if (! $doc) {
-            $errores = array_map(fn($e) => $e->message, libxml_get_errors());
+        libxml_use_internal_errors(true);
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $loaded = $dom->loadXML($xmlToParse, LIBXML_RECOVER | LIBXML_NOERROR | LIBXML_NOWARNING);
+
+        if (! $loaded) {
+            $errores = array_map(fn($e) => trim($e->message), libxml_get_errors());
             libxml_clear_errors();
-            return ['error' => 'No se pudo parsear el Invoice: ' . implode('; ', $errores)];
+            return ['error' => 'No se pudo parsear la factura: ' . implode('; ', array_unique($errores))];
         }
-
         libxml_clear_errors();
 
-        $nsCac = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2';
-        $nsCbc = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
 
-        // NIT y nombre del proveedor (AccountingSupplierParty)
-        $supplier = $doc->children($nsCac)->AccountingSupplierParty;
-        $party    = $supplier?->children($nsCac)->Party;
-        $taxScheme = $party?->children($nsCac)->PartyTaxScheme;
-        $nitProveedor    = $taxScheme ? (string) $taxScheme->children($nsCbc)->CompanyID : '';
-        $nombreProveedor = $taxScheme ? (string) $taxScheme->children($nsCbc)->RegistrationName : '';
+        $val = fn(string $query, ?\DOMNode $ctx = null): string =>
+            ($node = $xpath->query($query, $ctx)?->item(0)) ? trim($node->nodeValue) : '';
+
+        // NIT y nombre del proveedor
+        $nitProveedor    = $val('//cac:AccountingSupplierParty//cac:PartyTaxScheme/cbc:CompanyID');
+        $nombreProveedor = $val('//cac:AccountingSupplierParty//cac:PartyTaxScheme/cbc:RegistrationName');
 
         // Líneas de la factura
         $productos = [];
-        foreach ($doc->children($nsCac)->InvoiceLine as $line) {
-            $lineId   = (string) $line->children($nsCbc)->ID;
-            $cantidad = (string) $line->children($nsCbc)->InvoicedQuantity;
-            $valor    = (string) $line->children($nsCbc)->LineExtensionAmount;
-
-            $item       = $line->children($nsCac)->Item;
-            $descripcion = $item ? trim((string) $item->children($nsCbc)->Description, '|') : '';
-            $codigo      = '';
-            if ($item) {
-                $sellerId = $item->children($nsCac)->SellersItemIdentification;
-                $codigo   = $sellerId ? (string) $sellerId->children($nsCbc)->ID : '';
+        foreach ($xpath->query('//cac:InvoiceLine') as $line) {
+            $codigo = $val('cac:Item/cac:SellersItemIdentification/cbc:ID', $line);
+            if ($codigo === '') {
+                $codigo = $val('cac:Item/cac:StandardItemIdentification/cbc:ID', $line);
             }
 
+            $descripcion = trim($val('cac:Item/cbc:Description', $line), '| ');
+
             $productos[] = [
-                'linea'       => $lineId,
+                'linea'       => $val('cbc:ID', $line),
                 'codigo'      => $codigo,
-                'descripcion' => trim($descripcion),
-                'cantidad'    => $cantidad,
-                'valor'       => $valor,
+                'descripcion' => $descripcion,
+                'cantidad'    => $val('cbc:InvoicedQuantity', $line),
+                'valor'       => $val('cbc:LineExtensionAmount', $line),
             ];
         }
 
