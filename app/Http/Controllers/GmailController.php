@@ -174,7 +174,7 @@ class GmailController extends Controller
             $correos = $messages->map(function ($msg) use ($token) {
                 $detail = Http::withToken($token->access_token)
                     ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/{$msg['id']}", [
-                        'format'          => 'metadata',
+                        'format'          => 'full',
                         'metadataHeaders' => ['From', 'Subject', 'Date'],
                     ]);
 
@@ -190,19 +190,94 @@ class GmailController extends Controller
                     'date'    => $getHeader('Date'),
                     'snippet' => $detail->json('snippet', ''),
                     'unread'  => in_array('UNREAD', $detail->json('labelIds', [])),
+                    'payload' => $detail->json('payload'),
                 ];
             })->filter()->values();
 
+            // Tomar el primer correo y extraer archivos del ZIP adjunto
+            $archivosZip = [];
+            if ($correos->isNotEmpty()) {
+                $archivosZip = $this->extraerArchivosDeZip($token->access_token, $correos->first());
+            }
+
             return response()->json([
-                'factura' => $factura,
-                'total'   => $correos->count(),
-                'correos' => $correos,
+                'factura'      => $factura,
+                'total'        => $correos->count(),
+                'correos'      => $correos->map(fn($c) => array_diff_key($c, ['payload' => ''])),
+                'archivos_zip' => $archivosZip,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Gmail buscar error', ['error' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    private function extraerArchivosDeZip(string $accessToken, array $correo): array
+    {
+        $partes = $this->buscarPartes($correo['payload'] ?? []);
+
+        foreach ($partes as $parte) {
+            $filename = $parte['filename'] ?? '';
+            $mimeType = $parte['mimeType'] ?? '';
+
+            $esZip = str_ends_with(strtolower($filename), '.zip')
+                  || in_array($mimeType, ['application/zip', 'application/x-zip-compressed']);
+
+            if (! $esZip) continue;
+
+            $attachmentId = $parte['body']['attachmentId'] ?? null;
+            if (! $attachmentId) continue;
+
+            $attRes = Http::withToken($accessToken)
+                ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/{$correo['id']}/attachments/{$attachmentId}");
+
+            if ($attRes->failed()) continue;
+
+            // Gmail usa base64url — convertir a base64 estándar
+            $data = strtr($attRes->json('data', ''), '-_', '+/');
+            $zipContent = base64_decode($data);
+
+            if (! $zipContent) continue;
+
+            // Escribir ZIP a un archivo temporal y leer su índice
+            $tmpZip = tempnam(sys_get_temp_dir(), 'gmail_zip_');
+            file_put_contents($tmpZip, $zipContent);
+
+            $zip   = new \ZipArchive();
+            $names = [];
+
+            if ($zip->open($tmpZip) === true) {
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $names[] = $zip->getNameIndex($i);
+                }
+                $zip->close();
+            }
+
+            unlink($tmpZip);
+
+            return [
+                'zip_filename' => $filename,
+                'archivos'     => $names,
+            ];
+        }
+
+        return ['zip_filename' => null, 'archivos' => []];
+    }
+
+    private function buscarPartes(array $payload): array
+    {
+        $result = [];
+
+        if (! empty($payload['filename']) && ! empty($payload['body'])) {
+            $result[] = $payload;
+        }
+
+        foreach ($payload['parts'] ?? [] as $part) {
+            $result = array_merge($result, $this->buscarPartes($part));
+        }
+
+        return $result;
     }
 
     private function fetchEmails(string $accessToken): \Illuminate\Support\Collection

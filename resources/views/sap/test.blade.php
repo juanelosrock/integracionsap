@@ -539,7 +539,31 @@ async function buscarGmail() {
             return;
         }
 
-        results.innerHTML = data.correos.map(c => `
+        // Archivos del ZIP (primer correo)
+        let zipHtml = '';
+        const zip = data.archivos_zip;
+        if (zip && zip.zip_filename) {
+            const fileIcons = { xml: '📄', pdf: '📕' };
+            const fileList = zip.archivos.map(f => {
+                const ext = f.split('.').pop().toLowerCase();
+                const icon = fileIcons[ext] || '📎';
+                return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:11px;">
+                    <span>${icon}</span>
+                    <span style="font-family:monospace;color:#1e293b;">${escHtml(f)}</span>
+                </div>`;
+            }).join('');
+            zipHtml = `
+                <div style="margin:8px 12px;padding:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;">
+                    <div style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                        📦 ${escHtml(zip.zip_filename)}
+                    </div>
+                    ${fileList || '<span style="color:#9ca3af;font-size:11px;">ZIP vacío</span>'}
+                </div>`;
+        } else if (zip && zip.archivos_zip === null) {
+            zipHtml = `<div style="margin:8px 12px;font-size:11px;color:#9ca3af;">Sin adjunto ZIP en este correo.</div>`;
+        }
+
+        results.innerHTML = zipHtml + data.correos.map(c => `
             <div class="gmail-item ${c.unread ? 'unread' : ''}">
                 <div class="gmail-item-subject">
                     ${c.unread ? '<span class="gmail-badge-new"></span>' : ''}
