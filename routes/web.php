@@ -134,6 +134,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/gmail', [GmailController::class, 'index'])->name('gmail.index');
     Route::get('/gmail/redirect', [GmailController::class, 'redirect'])->name('gmail.redirect');
     Route::delete('/gmail/disconnect', [GmailController::class, 'disconnect'])->name('gmail.disconnect');
+    Route::get('/gmail/buscar', [GmailController::class, 'buscar'])->name('gmail.buscar');
 });
 
 require __DIR__.'/auth.php';

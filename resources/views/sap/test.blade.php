@@ -158,6 +158,50 @@
     .json-num    { color:#fb923c; }
     .json-bool   { color:#c084fc; }
     .json-null   { color:#94a3b8; }
+
+    /* ── Panel Gmail ── */
+    .gmail-panel {
+        width: 300px; min-width:240px; max-width:360px;
+        border-left:1px solid #e5e7eb;
+        display:flex; flex-direction:column;
+        background:#f9fafb;
+    }
+    .gmail-panel-header {
+        padding:10px 12px; font-size:11px; font-weight:700;
+        text-transform:uppercase; letter-spacing:.06em;
+        color:#6b7280; border-bottom:1px solid #e5e7eb;
+        background:#f3f4f6; display:flex; align-items:center; gap:6px;
+    }
+    .gmail-search-box {
+        padding:10px; border-bottom:1px solid #e5e7eb;
+        display:flex; gap:6px;
+    }
+    .gmail-search-box input {
+        flex:1; padding:5px 8px; font-size:12px;
+        border:1px solid #d1d5db; border-radius:4px; outline:none;
+    }
+    .gmail-search-box input:focus { border-color:#3b82f6; }
+    .gmail-search-box button {
+        padding:5px 10px; font-size:12px; background:#4f46e5;
+        color:#fff; border:none; border-radius:4px; cursor:pointer;
+        font-weight:600;
+    }
+    .gmail-search-box button:hover { background:#4338ca; }
+    .gmail-search-box button:disabled { background:#a5b4fc; cursor:not-allowed; }
+    .gmail-results { flex:1; overflow-y:auto; }
+    .gmail-empty {
+        padding:24px 12px; text-align:center; color:#9ca3af; font-size:12px;
+    }
+    .gmail-item {
+        padding:9px 12px; border-bottom:1px solid #f0f0f0; font-size:12px;
+    }
+    .gmail-item.unread { background:#eff6ff; }
+    .gmail-item-subject { font-weight:600; color:#1e293b; line-height:1.3; }
+    .gmail-item-from { color:#6b7280; font-size:11px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .gmail-item-date { color:#9ca3af; font-size:10px; margin-top:1px; }
+    .gmail-item-snippet { color:#64748b; font-size:11px; margin-top:3px; line-height:1.4; }
+    .gmail-badge-new { display:inline-block; width:6px; height:6px; background:#3b82f6; border-radius:50%; margin-right:4px; vertical-align:middle; }
+    .gmail-status { padding:6px 12px; font-size:11px; color:#6b7280; border-bottom:1px solid #e5e7eb; background:#f8fafc; }
 </style>
 
 <div style="padding:0;">
@@ -221,6 +265,25 @@
         <div class="editor-status">
             <span id="json-error"></span>
             <span id="editor-chars">0 chars</span>
+        </div>
+    </div>
+
+    <!-- ── Panel Gmail: buscar por factura ── -->
+    <div class="gmail-panel">
+        <div class="gmail-panel-header">
+            <svg style="width:13px;height:13px;flex-shrink:0;" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zm0 4.236l-8 4.882-8-4.882V6h16v2.236z"/>
+            </svg>
+            Gmail — Buscar Factura
+        </div>
+        <div class="gmail-search-box">
+            <input type="text" id="gmail-factura" placeholder="Nº factura en asunto..."
+                   onkeydown="if(event.key==='Enter') buscarGmail()">
+            <button id="gmail-btn" onclick="buscarGmail()">Buscar</button>
+        </div>
+        <div class="gmail-status" id="gmail-status" style="display:none;"></div>
+        <div class="gmail-results" id="gmail-results">
+            <div class="gmail-empty">Ingresa un número de factura para buscar en Gmail.</div>
         </div>
     </div>
 
@@ -439,6 +502,82 @@ function setResponseEmpty() {
     document.getElementById('time-label').textContent = '';
     lastResponse = null;
 }
+
+// ── Gmail: buscar por número de factura ────────────────────────────
+const GMAIL_BUSCAR_URL = '{{ route("gmail.buscar") }}';
+
+async function buscarGmail() {
+    const factura = document.getElementById('gmail-factura').value.trim();
+    if (!factura) return;
+
+    const btn     = document.getElementById('gmail-btn');
+    const status  = document.getElementById('gmail-status');
+    const results = document.getElementById('gmail-results');
+
+    btn.disabled = true;
+    btn.textContent = '...';
+    status.style.display = 'none';
+    results.innerHTML = '<div class="gmail-empty">Buscando...</div>';
+
+    try {
+        const url = GMAIL_BUSCAR_URL + '?factura=' + encodeURIComponent(factura);
+        const res = await fetch(url, {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF }
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            results.innerHTML = `<div class="gmail-empty" style="color:#ef4444;">${data.error}</div>`;
+            return;
+        }
+
+        status.style.display = 'block';
+        status.textContent = `${data.total} resultado(s) para "${data.factura}"`;
+
+        if (data.total === 0) {
+            results.innerHTML = '<div class="gmail-empty">No se encontraron correos con ese número en el asunto.</div>';
+            return;
+        }
+
+        results.innerHTML = data.correos.map(c => `
+            <div class="gmail-item ${c.unread ? 'unread' : ''}">
+                <div class="gmail-item-subject">
+                    ${c.unread ? '<span class="gmail-badge-new"></span>' : ''}
+                    ${escHtml(c.subject || '(Sin asunto)')}
+                </div>
+                <div class="gmail-item-from">${escHtml(c.from)}</div>
+                <div class="gmail-item-date">${escHtml(c.date)}</div>
+                <div class="gmail-item-snippet">${escHtml(c.snippet)}</div>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        results.innerHTML = `<div class="gmail-empty" style="color:#ef4444;">Error: ${e.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Buscar';
+    }
+}
+
+function escHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// También buscar al seleccionar un documento (usa el número de factura)
+const _origSeleccionarDoc = seleccionarDoc;
+seleccionarDoc = async function(id) {
+    await _origSeleccionarDoc(id);
+    const docItem = document.querySelector(`.doc-item[data-id="${id}"]`);
+    if (docItem) {
+        const num = docItem.dataset.num;
+        if (num) {
+            document.getElementById('gmail-factura').value = num;
+            buscarGmail();
+        }
+    }
+};
 
 // ── Syntax highlight ───────────────────────────────────────────────
 function syntaxHighlight(json) {

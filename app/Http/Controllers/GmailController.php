@@ -132,6 +132,79 @@ class GmailController extends Controller
         return $token->fresh();
     }
 
+    public function buscar(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'factura' => ['required', 'string', 'max:100'],
+        ]);
+
+        $token = GmailToken::first();
+
+        if (! $token) {
+            return response()->json(['error' => 'No hay cuenta de Gmail conectada.'], 422);
+        }
+
+        try {
+            if ($token->isExpired()) {
+                $token = $this->refreshToken($token);
+            }
+
+            $factura = trim($request->input('factura'));
+
+            $listResponse = Http::withToken($token->access_token)
+                ->get('https://gmail.googleapis.com/gmail/v1/users/me/messages', [
+                    'maxResults' => 20,
+                    'q'          => 'subject:' . $factura,
+                ]);
+
+            if ($listResponse->failed()) {
+                return response()->json(['error' => 'Error al consultar Gmail.'], 500);
+            }
+
+            $messages = collect($listResponse->json('messages', []));
+
+            if ($messages->isEmpty()) {
+                return response()->json([
+                    'factura'  => $factura,
+                    'total'    => 0,
+                    'correos'  => [],
+                ]);
+            }
+
+            $correos = $messages->map(function ($msg) use ($token) {
+                $detail = Http::withToken($token->access_token)
+                    ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/{$msg['id']}", [
+                        'format'          => 'metadata',
+                        'metadataHeaders' => ['From', 'Subject', 'Date'],
+                    ]);
+
+                if ($detail->failed()) return null;
+
+                $headers   = collect($detail->json('payload.headers', []));
+                $getHeader = fn($name) => $headers->firstWhere('name', $name)['value'] ?? '';
+
+                return [
+                    'id'      => $msg['id'],
+                    'from'    => $getHeader('From'),
+                    'subject' => $getHeader('Subject'),
+                    'date'    => $getHeader('Date'),
+                    'snippet' => $detail->json('snippet', ''),
+                    'unread'  => in_array('UNREAD', $detail->json('labelIds', [])),
+                ];
+            })->filter()->values();
+
+            return response()->json([
+                'factura' => $factura,
+                'total'   => $correos->count(),
+                'correos' => $correos,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Gmail buscar error', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     private function fetchEmails(string $accessToken): \Illuminate\Support\Collection
     {
         // Obtener lista de mensajes (últimos 20)
