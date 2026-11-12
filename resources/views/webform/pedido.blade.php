@@ -245,7 +245,7 @@
     .xl-sheet-wrap::-webkit-scrollbar-thumb { background: #bbb; border-radius: 2px; }
 </style>
 
-<div x-data="webformPedido('{{ route('webform.items-proveedor', ':id') }}')"
+<div x-data="webformPedido('{{ route('webform.items-proveedor', ':id') }}', '{{ route('webform.factura') }}')"
      style="max-width:860px; margin:0 auto; box-shadow:0 2px 16px rgba(0,0,0,.18);">
 
     {{-- ── Ribbon ── --}}
@@ -262,6 +262,62 @@
         <div class="xl-fxvalue">
             {{ $nombreTienda }} &nbsp;|&nbsp; Código: <strong>{{ $codigoTienda }}</strong>
         </div>
+    </div>
+
+    {{-- ── Buscar factura en el correo ── --}}
+    <div style="background:#fff; border-bottom:1px solid #bbb;">
+        <div class="xl-cell sec" style="padding:4px 8px;">BUSCAR FACTURA EN CORREO</div>
+        <div style="display:flex; gap:8px; padding:8px 10px; flex-wrap:wrap;">
+            <input type="text" x-model="facturaNum" placeholder="Nº de factura (ej. FE-12345)"
+                   @keydown.enter.prevent="buscarFactura()"
+                   style="flex:1; min-width:160px; border:1px solid #bbb; padding:5px 8px; font-size:13px; font-family:inherit;">
+            <button type="button" class="xl-btn" @click="buscarFactura()" :disabled="buscandoFactura">
+                <span x-show="!buscandoFactura">Buscar</span>
+                <span x-show="buscandoFactura" x-cloak><span class="spinner"></span></span>
+            </button>
+        </div>
+
+        <div x-show="facturaError" x-cloak x-text="facturaError"
+             style="padding:0 10px 8px; font-size:12px; color:#c00;"></div>
+
+        <div x-show="facturaBuscada && !facturaError && !factura" x-cloak
+             style="padding:0 10px 8px; font-size:12px; color:#b8860b;">
+            No se encontró una factura con ese número en el correo.
+        </div>
+
+        <template x-if="factura">
+            <div style="padding:0 10px 10px;">
+                <div style="font-size:12px; margin-bottom:6px;">
+                    <span style="color:#666;">NIT:</span>
+                    <strong x-text="factura.nit_proveedor"></strong>
+                    &nbsp;·&nbsp;
+                    <span x-text="factura.nombre_proveedor"></span>
+                </div>
+                <div class="xl-sheet-wrap">
+                    <table class="xl-sheet" style="min-width:340px;">
+                        <thead>
+                            <tr>
+                                <th class="xl-col-header" style="text-align:left;">Código</th>
+                                <th class="xl-col-header" style="text-align:left;">Descripción</th>
+                                <th class="xl-col-header" style="text-align:right;">Cant.</th>
+                                <th class="xl-col-header" style="text-align:right;">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(p, i) in factura.productos" :key="i">
+                                <tr>
+                                    <td class="xl-cell p-code" style="text-align:left; padding:2px 6px;" x-text="p.codigo"></td>
+                                    <td class="xl-cell p-desc" x-text="p.descripcion"></td>
+                                    <td class="xl-cell" style="text-align:right; padding:2px 6px;" x-text="p.cantidad"></td>
+                                    <td class="xl-cell" style="text-align:right; padding:2px 6px;"
+                                        x-text="Number(p.valor).toLocaleString('es-CO')"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
     </div>
 
     {{-- ── Errores ── --}}
@@ -488,11 +544,48 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-function webformPedido(urlTemplate) {
+function webformPedido(urlTemplate, urlFactura) {
     return {
         items: [],
         cargando: false,
         proveedorSeleccionado: false,
+
+        facturaNum: '',
+        buscandoFactura: false,
+        facturaBuscada: false,
+        facturaError: '',
+        factura: null,
+
+        async buscarFactura() {
+            const num = this.facturaNum.trim();
+            if (!num || this.buscandoFactura) return;
+
+            this.buscandoFactura = true;
+            this.facturaBuscada = false;
+            this.facturaError = '';
+            this.factura = null;
+
+            try {
+                const res  = await fetch(urlFactura + '?factura=' + encodeURIComponent(num), {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await res.json();
+
+                if (!res.ok || data.error) {
+                    this.facturaError = data.error
+                        || (data.errors ? Object.values(data.errors).flat()[0] : 'No se pudo consultar la factura.');
+                } else if (data.datos && data.datos.error) {
+                    this.facturaError = data.datos.error;
+                } else {
+                    this.factura = data.datos;
+                }
+            } catch (e) {
+                this.facturaError = 'Error de conexión: ' + e.message;
+            } finally {
+                this.facturaBuscada = true;
+                this.buscandoFactura = false;
+            }
+        },
 
         cargarItems(proveedorId) {
             this.items = [];

@@ -24,6 +24,9 @@ Route::get('/webform/pedido',  [WebformController::class, 'show'])->name('webfor
 Route::post('/webform/pedido', [WebformController::class, 'store'])->name('webform.store');
 Route::get('/webform/proveedores/{proveedor}/items', [WebformController::class, 'itemsProveedor'])
     ->name('webform.items-proveedor');
+Route::get('/webform/factura', [GmailController::class, 'buscarWebform'])
+    ->middleware('throttle:15,1')
+    ->name('webform.factura');
 // ───────────────────────────────────────────────────────────────────────────
 
 Route::get('/dashboard', function () {

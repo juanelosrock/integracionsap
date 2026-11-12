@@ -213,6 +213,33 @@ class GmailController extends Controller
         }
     }
 
+    /**
+     * Versión pública (webform embebido): reutiliza buscar() pero devuelve
+     * únicamente los datos de la factura, sin exponer el contenido de los correos.
+     */
+    public function buscarWebform(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'factura' => ['required', 'string', 'max:100', 'regex:/^[\w\-\. ]+$/u'],
+        ]);
+
+        $respuesta = $this->buscar($request);
+        $data      = $respuesta->getData(true);
+
+        if ($respuesta->getStatusCode() !== 200 || isset($data['error'])) {
+            return response()->json(
+                ['error' => 'No se pudo consultar la factura. Intenta de nuevo.'],
+                $respuesta->getStatusCode() === 422 ? 422 : 500
+            );
+        }
+
+        return response()->json([
+            'factura' => $data['factura'],
+            'total'   => $data['total'],
+            'datos'   => $data['archivos_zip']['factura'] ?? null,
+        ]);
+    }
+
     private function extraerArchivosDeZip(string $accessToken, array $correo): array
     {
         $partes = $this->buscarPartes($correo['payload'] ?? []);
