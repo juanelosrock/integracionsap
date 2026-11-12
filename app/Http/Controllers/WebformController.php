@@ -38,6 +38,7 @@ class WebformController extends Controller
             'items'          => ['required', 'array'],
             'items.*.item_id'  => ['required', 'integer'],
             'items.*.cantidad' => ['required', 'numeric', 'min:0'],
+            'items.*.recibido' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $itemsValidos = collect($request->items)
@@ -70,6 +71,7 @@ class WebformController extends Controller
                 'descripcion'  => trim($item->descripcion),
                 'unidadmedida' => trim($item->unidadmedida),
                 'cantidad'     => (float)$line['cantidad'],
+                'recibido'     => isset($line['recibido']) ? (float)$line['recibido'] : null,
             ]);
         }
 

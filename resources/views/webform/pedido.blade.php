@@ -146,8 +146,11 @@
     .xl-cell.p-unit  { text-align: center; font-size: 11px; color: #555; padding: 2px 4px; }
     .xl-cell.p-qty   { background: #fff2cc; text-align: center; }
     .xl-cell.p-qty.has-v { background: #e2efda; }
+    .xl-cell.p-rec   { background: #ddebf7; text-align: center; }
+    .xl-cell.p-rec.has-v { background: #e2efda; }
 
-    .xl-cell.p-qty input[type="number"] {
+    .xl-cell.p-qty input[type="number"],
+    .xl-cell.p-rec input[type="number"] {
         width: 100%; height: 100%;
         border: none; outline: none;
         padding: 2px 4px;
@@ -158,7 +161,8 @@
         text-align: center;
         color: #1a1a1a;
     }
-    .xl-cell.p-qty input:focus { background: #e8f0fe; box-shadow: inset 0 0 0 2px #4472c4; }
+    .xl-cell.p-qty input:focus,
+    .xl-cell.p-rec input:focus { background: #e8f0fe; box-shadow: inset 0 0 0 2px #4472c4; }
 
     /* ── Totales ── */
     .xl-cell.tot-lbl { background: #dae3f3; font-weight: 700; font-size: 12px; text-align: right; padding: 3px 8px; }
@@ -224,8 +228,9 @@
         .xl-cell.p-info { padding: 3px 6px; }
 
         .xl-cell { height: 32px; }             /* filas más altas → más fácil de tocar */
-        .xl-cell.p-qty input[type="number"] { font-size: 16px; }   /* previene zoom iOS */
-        .xl-cell.p-qty { min-width: 60px; }
+        .xl-cell.p-qty input[type="number"],
+        .xl-cell.p-rec input[type="number"] { font-size: 16px; }   /* previene zoom iOS */
+        .xl-cell.p-qty, .xl-cell.p-rec { min-width: 60px; }
 
         /* Campo de cantidad: hacemos la celda más alta en móvil */
         .xl-cell.input-row { height: 34px; }
@@ -287,6 +292,7 @@
                     <th class="xl-col-header letter">B</th>
                     <th class="xl-col-header letter letter-unit" style="width:80px;">C</th>
                     <th class="xl-col-header letter" style="width:90px;">D</th>
+                    <th class="xl-col-header letter" style="width:90px;">E</th>
                 </tr>
             </thead>
 
@@ -295,14 +301,14 @@
                 {{-- Fila 1: Cabecera --}}
                 <tr>
                     <td class="xl-cell rn">1</td>
-                    <td class="xl-cell sec" colspan="4">CABECERA DEL PEDIDO</td>
+                    <td class="xl-cell sec" colspan="5">CABECERA DEL PEDIDO</td>
                 </tr>
 
                 {{-- Fila 2: Fecha --}}
                 <tr>
                     <td class="xl-cell rn">2</td>
                     <td class="xl-cell lbl">Fecha</td>
-                    <td class="xl-cell input-row" colspan="3">
+                    <td class="xl-cell input-row" colspan="4">
                         <input type="date" name="fecha" value="{{ old('fecha', date('Y-m-d')) }}" required>
                     </td>
                 </tr>
@@ -311,7 +317,7 @@
                 <tr>
                     <td class="xl-cell rn">3</td>
                     <td class="xl-cell lbl">Proveedor</td>
-                    <td class="xl-cell input-row" colspan="3">
+                    <td class="xl-cell input-row" colspan="4">
                         <select name="proveedor_id" required @change="cargarItems($event.target.value)">
                             <option value="">— Seleccionar proveedor —</option>
                             @foreach($proveedores as $p)
@@ -327,7 +333,7 @@
                 <tr>
                     <td class="xl-cell rn">4</td>
                     <td class="xl-cell lbl">Factura</td>
-                    <td class="xl-cell input-row" colspan="3">
+                    <td class="xl-cell input-row" colspan="4">
                         <div style="display:flex; align-items:center; gap:6px; padding-right:4px;">
                             <input type="text" x-model="facturaNum" placeholder="Nº de factura (ej. FE-12345)"
                                    @keydown.enter.prevent="buscarFactura()">
@@ -343,7 +349,7 @@
                 {{-- Fila 5: Resultado de la factura --}}
                 <tr x-show="facturaBuscada" x-cloak>
                     <td class="xl-cell rn">5</td>
-                    <td class="xl-cell" colspan="4" style="height:auto; padding:6px 8px;">
+                    <td class="xl-cell" colspan="5" style="height:auto; padding:6px 8px;">
                         <div x-show="facturaError" x-cloak x-text="facturaError"
                              style="font-size:12px; color:#c00;"></div>
 
@@ -391,18 +397,18 @@
                 <tr style="height:52px;">
                     <td class="xl-cell rn">6</td>
                     <td class="xl-cell lbl" style="vertical-align:top; padding-top:5px;">Obs.</td>
-                    <td class="xl-cell" colspan="3" style="height:52px;">
+                    <td class="xl-cell" colspan="4" style="height:52px;">
                         <textarea name="observaciones" placeholder="Notas del pedido...">{{ old('observaciones') }}</textarea>
                     </td>
                 </tr>
 
                 {{-- Fila 7: Espacio --}}
-                <tr><td class="xl-cell rn">7</td><td class="xl-cell blank" colspan="4"></td></tr>
+                <tr><td class="xl-cell rn">7</td><td class="xl-cell blank" colspan="5"></td></tr>
 
                 {{-- Fila 8: Sección productos --}}
                 <tr>
                     <td class="xl-cell rn">8</td>
-                    <td class="xl-cell sec" colspan="4">
+                    <td class="xl-cell sec" colspan="5">
                         DETALLE DE PRODUCTOS
                         <span x-show="cargando" style="margin-left:8px;">
                             <span class="spinner"></span>
@@ -420,12 +426,13 @@
                     <td class="xl-cell lbl" style="font-size:11px;">DESCRIPCIÓN</td>
                     <td class="xl-cell lbl hide-mobile hide-tablet" style="text-align:center; font-size:11px;">UNIDAD</td>
                     <td class="xl-cell lbl" style="text-align:center; font-size:11px; background:#fff2cc;">CANTIDAD</td>
+                    <td class="xl-cell lbl" style="text-align:center; font-size:11px; background:#ddebf7;">RECIBIDO</td>
                 </tr>
 
                 {{-- Sin proveedor --}}
                 <tr x-show="!proveedorSeleccionado && !cargando" x-cloak>
                     <td class="xl-cell rn">10</td>
-                    <td class="xl-cell" colspan="4"
+                    <td class="xl-cell" colspan="5"
                         style="color:#999; font-style:italic; text-align:center; padding:12px 8px; font-size:12px;">
                         ← Selecciona un proveedor en la fila 3
                     </td>
@@ -434,7 +441,7 @@
                 {{-- Sin productos --}}
                 <tr x-show="proveedorSeleccionado && !cargando && items.length === 0" x-cloak>
                     <td class="xl-cell rn">10</td>
-                    <td class="xl-cell" colspan="4"
+                    <td class="xl-cell" colspan="5"
                         style="color:#b8860b; font-style:italic; text-align:center; padding:12px 8px; font-size:12px;">
                         ⚠ Este proveedor no tiene productos asociados
                     </td>
@@ -476,6 +483,15 @@
                                    min="0" step="1" placeholder="0"
                                    inputmode="numeric">
                         </td>
+
+                        {{-- Recibido (cantidad real de mercancía recibida) --}}
+                        <td class="xl-cell p-rec" :class="item.recibido > 0 ? 'has-v' : ''">
+                            <input type="number"
+                                   :name="`items[${index}][recibido]`"
+                                   x-model.number="item.recibido"
+                                   min="0" step="any" placeholder="0"
+                                   inputmode="decimal">
+                        </td>
                     </tr>
                 </template>
 
@@ -485,15 +501,16 @@
                     <td class="xl-cell tot-lbl" colspan="2">TOTAL</td>
                     <td class="xl-cell tot-val hide-mobile hide-tablet" x-text="totalItems() + ' prod.'"></td>
                     <td class="xl-cell tot-val" x-text="totalUnidades() + ' uds.'"></td>
+                    <td class="xl-cell tot-val" x-text="totalRecibido() + ' rec.'"></td>
                 </tr>
 
                 {{-- Espacio --}}
-                <tr><td class="xl-cell rn"></td><td class="xl-cell blank" colspan="4"></td></tr>
+                <tr><td class="xl-cell rn"></td><td class="xl-cell blank" colspan="5"></td></tr>
 
                 {{-- Botón --}}
                 <tr>
                     <td class="xl-cell rn"></td>
-                    <td class="xl-cell" colspan="4"
+                    <td class="xl-cell" colspan="5"
                         style="padding:8px 10px; background:#f5f5f5; border-top:2px solid #217346;">
                         <div style="display:flex; align-items:center; flex-wrap:wrap; gap:10px;">
                             <button type="submit" class="xl-btn" id="btnEnviar">
@@ -544,9 +561,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('wfForm').addEventListener('submit', function () {
         document.querySelectorAll('input[type="number"][name*="[cantidad]"]').forEach(function (input) {
             if (!parseFloat(input.value) || parseFloat(input.value) <= 0) {
-                input.disabled = true;
-                const hidden = input.closest('td')?.querySelector('input[type="hidden"]');
-                if (hidden) hidden.disabled = true;
+                // sin cantidad: no se envía la fila (item_id, cantidad ni recibido)
+                input.closest('tr')?.querySelectorAll('input').forEach(function (el) { el.disabled = true; });
             }
         });
     });
@@ -607,13 +623,14 @@ function webformPedido(urlTemplate, urlFactura) {
             })
             .then(r => r.json())
             .then(data => {
-                this.items = data.map(item => ({ ...item, cantidad: 0 }));
+                this.items = data.map(item => ({ ...item, cantidad: 0, recibido: '' }));
                 this.cargando = false;
             })
             .catch(() => { this.cargando = false; });
         },
 
         totalItems()    { return this.items.filter(i => i.cantidad > 0).length; },
+        totalRecibido() { return this.items.reduce((s, i) => s + (Number(i.recibido) > 0 ? Number(i.recibido) : 0), 0); },
         totalUnidades() { return this.items.reduce((s, i) => s + (i.cantidad > 0 ? Number(i.cantidad) : 0), 0); }
     };
 }

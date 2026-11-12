@@ -16,11 +16,15 @@ class DocumentoItem extends Model
         'descripcion',
         'unidadmedida',
         'cantidad',
+        'recibido',
     ];
 
     protected function casts(): array
     {
-        return ['cantidad' => 'decimal:2'];
+        return [
+            'cantidad' => 'decimal:2',
+            'recibido' => 'decimal:2',
+        ];
     }
 
     public function documento(): BelongsTo

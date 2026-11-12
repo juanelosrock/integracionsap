@@ -106,6 +106,7 @@
                                 <th class="px-4 py-3 text-left">Descripción</th>
                                 <th class="px-4 py-3 text-center">Unidad</th>
                                 <th class="px-4 py-3 text-right">Cantidad</th>
+                                <th class="px-4 py-3 text-right">Recibido</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -122,12 +123,15 @@
                                     <td class="px-4 py-3 text-right font-bold text-gray-900 dark:text-gray-100">
                                         {{ number_format($line->cantidad, 2) }}
                                     </td>
+                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                                        {{ $line->recibido !== null ? number_format($line->recibido, 2) : '—' }}
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
                         <tfoot class="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <td colspan="4" class="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">
+                                <td colspan="5" class="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">
                                     Total ítems:
                                 </td>
                                 <td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">
