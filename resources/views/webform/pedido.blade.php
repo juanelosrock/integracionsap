@@ -264,62 +264,6 @@
         </div>
     </div>
 
-    {{-- ── Buscar factura en el correo ── --}}
-    <div style="background:#fff; border-bottom:1px solid #bbb;">
-        <div class="xl-cell sec" style="padding:4px 8px;">BUSCAR FACTURA EN CORREO</div>
-        <div style="display:flex; gap:8px; padding:8px 10px; flex-wrap:wrap;">
-            <input type="text" x-model="facturaNum" placeholder="Nº de factura (ej. FE-12345)"
-                   @keydown.enter.prevent="buscarFactura()"
-                   style="flex:1; min-width:160px; border:1px solid #bbb; padding:5px 8px; font-size:13px; font-family:inherit;">
-            <button type="button" class="xl-btn" @click="buscarFactura()" :disabled="buscandoFactura">
-                <span x-show="!buscandoFactura">Buscar</span>
-                <span x-show="buscandoFactura" x-cloak><span class="spinner"></span></span>
-            </button>
-        </div>
-
-        <div x-show="facturaError" x-cloak x-text="facturaError"
-             style="padding:0 10px 8px; font-size:12px; color:#c00;"></div>
-
-        <div x-show="facturaBuscada && !facturaError && !factura" x-cloak
-             style="padding:0 10px 8px; font-size:12px; color:#b8860b;">
-            No se encontró una factura con ese número en el correo.
-        </div>
-
-        <template x-if="factura">
-            <div style="padding:0 10px 10px;">
-                <div style="font-size:12px; margin-bottom:6px;">
-                    <span style="color:#666;">NIT:</span>
-                    <strong x-text="factura.nit_proveedor"></strong>
-                    &nbsp;·&nbsp;
-                    <span x-text="factura.nombre_proveedor"></span>
-                </div>
-                <div class="xl-sheet-wrap">
-                    <table class="xl-sheet" style="min-width:340px;">
-                        <thead>
-                            <tr>
-                                <th class="xl-col-header" style="text-align:left;">Código</th>
-                                <th class="xl-col-header" style="text-align:left;">Descripción</th>
-                                <th class="xl-col-header" style="text-align:right;">Cant.</th>
-                                <th class="xl-col-header" style="text-align:right;">Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="(p, i) in factura.productos" :key="i">
-                                <tr>
-                                    <td class="xl-cell p-code" style="text-align:left; padding:2px 6px;" x-text="p.codigo"></td>
-                                    <td class="xl-cell p-desc" x-text="p.descripcion"></td>
-                                    <td class="xl-cell" style="text-align:right; padding:2px 6px;" x-text="p.cantidad"></td>
-                                    <td class="xl-cell" style="text-align:right; padding:2px 6px;"
-                                        x-text="Number(p.valor).toLocaleString('es-CO')"></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </template>
-    </div>
-
     {{-- ── Errores ── --}}
     @if($errors->any())
         <div class="xl-errors">
@@ -379,21 +323,85 @@
                     </td>
                 </tr>
 
-                {{-- Fila 4: Observaciones --}}
-                <tr style="height:52px;">
+                {{-- Fila 4: Factura (buscar en correo) --}}
+                <tr>
                     <td class="xl-cell rn">4</td>
+                    <td class="xl-cell lbl">Factura</td>
+                    <td class="xl-cell input-row" colspan="3">
+                        <div style="display:flex; align-items:center; gap:6px; padding-right:4px;">
+                            <input type="text" x-model="facturaNum" placeholder="Nº de factura (ej. FE-12345)"
+                                   @keydown.enter.prevent="buscarFactura()">
+                            <button type="button" class="xl-btn" style="padding:2px 14px;"
+                                    @click="buscarFactura()" :disabled="buscandoFactura">
+                                <span x-show="!buscandoFactura">Buscar</span>
+                                <span x-show="buscandoFactura" x-cloak><span class="spinner"></span></span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+
+                {{-- Fila 5: Resultado de la factura --}}
+                <tr x-show="facturaBuscada" x-cloak>
+                    <td class="xl-cell rn">5</td>
+                    <td class="xl-cell" colspan="4" style="height:auto; padding:6px 8px;">
+                        <div x-show="facturaError" x-cloak x-text="facturaError"
+                             style="font-size:12px; color:#c00;"></div>
+
+                        <div x-show="!facturaError && !factura" x-cloak
+                             style="font-size:12px; color:#b8860b; font-style:italic;">
+                            No se encontró una factura con ese número en el correo.
+                        </div>
+
+                        <template x-if="factura">
+                            <div>
+                                <div style="font-size:12px; margin-bottom:6px;">
+                                    <span style="color:#666;">NIT:</span>
+                                    <strong x-text="factura.nit_proveedor"></strong>
+                                    &nbsp;·&nbsp;
+                                    <span x-text="factura.nombre_proveedor"></span>
+                                </div>
+                                <div class="xl-sheet-wrap">
+                                    <table class="xl-sheet" style="min-width:340px;">
+                                        <thead>
+                                            <tr>
+                                                <th class="xl-col-header" style="text-align:left;">Código</th>
+                                                <th class="xl-col-header" style="text-align:left;">Descripción</th>
+                                                <th class="xl-col-header" style="text-align:right;">Cant.</th>
+                                                <th class="xl-col-header" style="text-align:right;">Valor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="(p, i) in factura.productos" :key="i">
+                                                <tr>
+                                                    <td class="xl-cell p-code" style="text-align:left; padding:2px 6px;" x-text="p.codigo"></td>
+                                                    <td class="xl-cell p-desc" x-text="p.descripcion"></td>
+                                                    <td class="xl-cell" style="text-align:right; padding:2px 6px;" x-text="p.cantidad"></td>
+                                                    <td class="xl-cell" style="text-align:right; padding:2px 6px;"
+                                                        x-text="Number(p.valor).toLocaleString('es-CO')"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </template>
+                    </td>
+                </tr>
+                {{-- Fila 6: Observaciones --}}
+                <tr style="height:52px;">
+                    <td class="xl-cell rn">6</td>
                     <td class="xl-cell lbl" style="vertical-align:top; padding-top:5px;">Obs.</td>
                     <td class="xl-cell" colspan="3" style="height:52px;">
                         <textarea name="observaciones" placeholder="Notas del pedido...">{{ old('observaciones') }}</textarea>
                     </td>
                 </tr>
 
-                {{-- Fila 5: Espacio --}}
-                <tr><td class="xl-cell rn">5</td><td class="xl-cell blank" colspan="4"></td></tr>
+                {{-- Fila 7: Espacio --}}
+                <tr><td class="xl-cell rn">7</td><td class="xl-cell blank" colspan="4"></td></tr>
 
-                {{-- Fila 6: Sección productos --}}
+                {{-- Fila 8: Sección productos --}}
                 <tr>
-                    <td class="xl-cell rn">6</td>
+                    <td class="xl-cell rn">8</td>
                     <td class="xl-cell sec" colspan="4">
                         DETALLE DE PRODUCTOS
                         <span x-show="cargando" style="margin-left:8px;">
@@ -405,9 +413,9 @@
                     </td>
                 </tr>
 
-                {{-- Fila 7: Encabezados columnas productos --}}
+                {{-- Fila 9: Encabezados columnas productos --}}
                 <tr>
-                    <td class="xl-cell rn">7</td>
+                    <td class="xl-cell rn">9</td>
                     <td class="xl-cell lbl hide-mobile" style="text-align:center; font-size:11px;">CÓDIGO</td>
                     <td class="xl-cell lbl" style="font-size:11px;">DESCRIPCIÓN</td>
                     <td class="xl-cell lbl hide-mobile hide-tablet" style="text-align:center; font-size:11px;">UNIDAD</td>
@@ -416,7 +424,7 @@
 
                 {{-- Sin proveedor --}}
                 <tr x-show="!proveedorSeleccionado && !cargando" x-cloak>
-                    <td class="xl-cell rn">8</td>
+                    <td class="xl-cell rn">10</td>
                     <td class="xl-cell" colspan="4"
                         style="color:#999; font-style:italic; text-align:center; padding:12px 8px; font-size:12px;">
                         ← Selecciona un proveedor en la fila 3
@@ -425,7 +433,7 @@
 
                 {{-- Sin productos --}}
                 <tr x-show="proveedorSeleccionado && !cargando && items.length === 0" x-cloak>
-                    <td class="xl-cell rn">8</td>
+                    <td class="xl-cell rn">10</td>
                     <td class="xl-cell" colspan="4"
                         style="color:#b8860b; font-style:italic; text-align:center; padding:12px 8px; font-size:12px;">
                         ⚠ Este proveedor no tiene productos asociados
@@ -435,7 +443,7 @@
                 {{-- Filas de productos --}}
                 <template x-for="(item, index) in items" :key="item.id">
                     <tr>
-                        <td class="xl-cell rn" x-text="8 + index"></td>
+                        <td class="xl-cell rn" x-text="10 + index"></td>
 
                         {{-- Código (oculto en móvil) --}}
                         <td class="xl-cell p-code hide-mobile"
